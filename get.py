@@ -12,8 +12,8 @@ import os
 
 filename = 'cookie'
 if os.path.exists(filename): 
-  cookie = cookielib.MozillaCookieJar()
-  cookie.load('cookie.txt', ignore_discard=True, ignore_expires=True)
+  cookie = cookielib.MozillaCookieJar(filename)
+  cookie.load(filename, ignore_discard=True, ignore_expires=True)
 else: 
   cookie = cookielib.MozillaCookieJar(filename)
 opener = urllib2.build_opener(urllib2.HTTPCookieProcessor(cookie))
@@ -30,12 +30,14 @@ def login():
              'password': password
              })
   loginUrl = 'https://community.topcoder.com/tc';
-  result = opener.open(loginUrl,postdata)
+  getpage(loginUrl, postdata)
   cookie.save(ignore_discard=True, ignore_expires=True)
 
-def getpage(url):
-  result = opener.open(url)
-  return result.read()
+def getpage(url, postData = None):
+  print 'send request', url
+  result = opener.open(url, postData)
+  ret = result.read()
+  return ret;
 
 def getDataUrl(problemUrl):
   html = getpage(problemUrl);
@@ -57,10 +59,12 @@ def output(data, layout):
     return string.uppercase[i] + '.' * j
   
   def checkTypeStr(s):
+    if len(s) == 0: return False;
+    s = s[0];
     return isinstance(s, str) or isinstance(s, unicode);
 
   for i, s in enumerate(data):
-    if isinstance(s, list) and checkTypeStr(s[0]):
+    if isinstance(s, list) and checkTypeStr(s):
       layout = layout.replace(getLabel(i, 2), str(len(s[0])));
   for i, s in enumerate(data):
     if isinstance(s, list):
@@ -68,18 +72,20 @@ def output(data, layout):
   for i, s in enumerate(data):
     if isinstance(s, list):
       layout = layout.replace(getLabel(i, 0), 
-          ('\n' if checkTypeStr(s[0]) else ' ').join(map(str, s)));
+          ('\n' if checkTypeStr(s) else ' ').join(map(str, s)));
     else:
       layout = layout.replace(getLabel(i, 0), str(s));
   return layout
 
 def generateData(url):
+  firstIn = True;
   while True:
-    login();
     html = getpage(url);
     text = re.findall(r'<!-- System Testing -->([^!]*)!', html);
     if len(text) > 0: break;
-    print 'wrong password?'
+    if firstIn: firstIn = False; 
+    else: print 'user name or password is wrong?';
+    login();
   data = re.findall(r'<TD (?:BACKGROUND="/i/steel_blue_bg.gif" )?CLASS="statText"[^>]*>([^<]*)</TD>', text[0])
   assert len(data) % 3 == 0
   dataIn = map(pretty, data[::3]);
@@ -112,6 +118,5 @@ def generateData(url):
 
 problemUrl = raw_input('problem url:');
 dataUrl = getDataUrl(problemUrl);
-print 'data url: ', dataUrl
 generateData(dataUrl);
 
