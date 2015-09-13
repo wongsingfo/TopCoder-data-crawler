@@ -11,11 +11,9 @@ import string
 import os
 
 filename = 'cookie'
-if os.path.exists(filename): 
-  cookie = cookielib.MozillaCookieJar(filename)
+cookie = cookielib.MozillaCookieJar(filename)
+if os.path.exists(filename):
   cookie.load(filename, ignore_discard=True, ignore_expires=True)
-else: 
-  cookie = cookielib.MozillaCookieJar(filename)
 opener = urllib2.build_opener(urllib2.HTTPCookieProcessor(cookie))
 
 def login():
