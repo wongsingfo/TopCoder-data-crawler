@@ -4,6 +4,7 @@
 import urllib  
 import urllib2  
 import cookielib
+import HTMLParser
 import getpass
 import re
 import json
@@ -15,6 +16,7 @@ cookie = cookielib.MozillaCookieJar(filename)
 if os.path.exists(filename):
   cookie.load(filename, ignore_discard=True, ignore_expires=True)
 opener = urllib2.build_opener(urllib2.HTTPCookieProcessor(cookie))
+htmlParser = HTMLParser.HTMLParser()
 
 def login():
   print 'please login'
@@ -49,6 +51,7 @@ def getDataUrl(problemUrl):
   return 'http://community.topcoder.com' + ref[0].replace('&amp;', '&');
 
 def pretty(s):
+  s = htmlParser.unescape(s)
   s = '[' + s.replace('\n', '').replace('{', '[').replace('}', ']') + ']';
   return json.loads(s);
 
