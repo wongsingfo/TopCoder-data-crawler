@@ -2,3 +2,9 @@ cookie
 layout.in
 layout.out
 data
+
+
+# ignore pyinstaller
+build
+dist
+get.spec

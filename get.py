@@ -48,7 +48,7 @@ def getDataUrl(problemUrl):
   html = getpage(statusUrl);
   ref = re.findall(r'<a href="([^"]*)" class="statText">view</a>', html);
   assert len(ref) > 0
-  return 'http://community.topcoder.com' + ref[0].replace('&amp;', '&');
+  return 'http://community.topcoder.com' + ref[-1].replace('&amp;', '&');
 
 def pretty(s):
   s = htmlParser.unescape(s)
