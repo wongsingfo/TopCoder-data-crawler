@@ -1,15 +1,16 @@
 #!/usr/bin/env python2.7
 # -*- coding: utf-8 -*-
 
+import cookielib
+import getpass
+import HTMLParser
+import json
+import os
+import re
+import string
 import urllib  
 import urllib2  
-import cookielib
-import HTMLParser
-import getpass
-import re
-import json
-import string
-import os
+from ssl import SSLError
 
 filename = 'cookie'
 cookie = cookielib.MozillaCookieJar(filename)
@@ -34,10 +35,15 @@ def login():
   cookie.save(ignore_discard=True, ignore_expires=True)
 
 def getpage(url, postData = None):
-  print 'send request', url
-  result = opener.open(url, postData)
-  ret = result.read()
-  return ret;
+  print 'send request', url 
+  while True:
+    try:
+      request = opener.open(url, postData, 10)
+      ret = request.read()
+    except Exception as e:
+      print 'request timeout (10s), send another one'
+      continue
+    return ret;
 
 def getDataUrl(problemUrl):
   html = getpage(problemUrl);
@@ -49,11 +55,6 @@ def getDataUrl(problemUrl):
   ref = re.findall(r'<a href="([^"]*)" class="statText">view</a>', html);
   assert len(ref) > 0
   return 'http://community.topcoder.com' + ref[-1].replace('&amp;', '&');
-
-def pretty(s):
-  s = htmlParser.unescape(s)
-  s = '[' + s.replace('\n', '').replace('{', '[').replace('}', ']') + ']';
-  return json.loads(s);
 
 def output(data, layout):
   def getLabel(i, j):
@@ -85,14 +86,20 @@ def generateData(url):
     text = re.findall(r'<!-- System Testing -->([^!]*)!', html);
     if len(text) > 0: break;
     if firstIn: firstIn = False; 
-    else: print 'user name or password is wrong?';
+    else: print 'Is username or password wrong?';
     login();
   data = re.findall(r'<TD (?:BACKGROUND="/i/steel_blue_bg.gif" )?CLASS="statText"[^>]*>([^<]*)</TD>', text[0])
   assert len(data) % 3 == 0
+
+  def pretty(s):
+    s = htmlParser.unescape(s)
+    s = '[' + s.replace('\n', '').replace('{', '[').replace('}', ']') + ']';
+    return json.loads(s);
   dataIn = map(pretty, data[::3]);
   dataOut = map(pretty, data[1::3]);
   
   count = len(dataIn);
+  print "*** Remember to configure the layout files. ***"
   name = raw_input('file name:');
   group = input('group size:');
   
@@ -106,8 +113,8 @@ def generateData(url):
 
   if os.path.exists(name) == False: os.mkdir(name);
   for i in xrange(0, count, group):
-    writerIn = open('%s/%s%03d.in' % (name, name, i / group + 1), 'w');
-    writerOut = open('%s/%s%03d.out' % (name, name, i / group + 1), 'w');
+    writerIn = open('%s/%d.in' % (name, i / group + 1), 'w');
+    writerOut = open('%s/%d.out' % (name, i / group + 1), 'w');
     
     if group > 1: writerIn.write(str(min(count - i, group)) + '\n');
 
