@@ -76,6 +76,41 @@ def getData(problemUrl):
     else: print 'Is username or password wrong?';
     login();
 
+def guess_layout(data):
+  def is_num(s): return isinstance(s, int) or isinstance(s, float)
+  def is_str(s): return isinstance(s, str) or isinstance(s, unicode)
+  def i2c(i): return chr(i + ord('A'))
+  def all_are(a, ele): return a.count(ele) == len(a)
+  def the_same(a): return len(a) == 0 or all_are(a, a[0])
+  def every(tester, x): return all_are(map(tester, x), True)
+  def is_string_array(s): return all_are(map(is_str, s), True)
+  def same_string_length(a): return the_same(map(len, a))
+  def is_square(a): return len(a) and len(a) == len(a[0])
+
+  header, body = [], []
+  for i, s in enumerate(data[0]):
+    collection = map(lambda x: x[i], data)
+
+    if is_num(s):
+      header.append(i2c(i))
+    elif is_str(s):
+      if all_are(map(bool, collection), True):
+        body.append(i2c(i))
+      else:
+        body.append('"%c"' % i2c(i))
+    elif every(is_string_array, collection):
+      header.append(i2c(i) + '.')
+      if every(same_string_length, collection) and not every(is_square, collection): 
+        header.append(i2c(i) + '..')
+      body.append(i2c(i))
+    else: # should be int[] / float[] 
+      header.append(i2c(i) + '.')
+      body.append(i2c(i))
+  layout = '\n'.join([' '.join(header), '\n'.join(body)]).strip()
+  print '-------- probable layout --------'
+  print layout
+  return layout + '\n'
+
 def output(data, layout):
   # mangle
   mangle_prefix = ['#' + i + ''.join(random.sample(string.lowercase, 13)) + '#' for i in string.uppercase]
@@ -106,7 +141,7 @@ def output(data, layout):
 
 def generateData(html):
   data = re.findall(r'<TD (?:BACKGROUND="/i/steel_blue_bg.gif" )?CLASS="statText" ALIGN="(?:left|right)">([^<]*)</TD>', html)
-  assert len(data) % 3 == 0
+  assert len(data) % 3 == 0 and len(data) > 0
 
   def pretty(s):
     s = htmlParser.unescape(s)
@@ -117,8 +152,14 @@ def generateData(html):
     
   number_of_data = len(dataIn)
 
-  layoutIn = read_from_file('layout.in')
-  layoutOut = read_from_file('layout.out')
+  def guess_or_read(filename, data):
+    if os.path.exists(filename):
+      return read_from_file(filename)
+    else:
+      return guess_layout(data)
+
+  layoutIn = guess_or_read('layout.in', dataIn)
+  layoutOut = guess_or_read('layout.out', dataOut)
   
   name = raw_input('file name:');
   group = input('group size:');
