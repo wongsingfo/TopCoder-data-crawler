@@ -2,6 +2,7 @@ cookie
 layout.in
 layout.out
 data
+data.html
 
 
 # ignore pyinstaller

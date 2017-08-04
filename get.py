@@ -6,6 +6,7 @@ import getpass
 import HTMLParser
 import json
 import os
+import random
 import re
 import string
 import urllib  
@@ -45,7 +46,19 @@ def getpage(url, postData = None):
       continue
     return ret;
 
-def getDataUrl(problemUrl):
+def read_from_file(file):
+  h = open(file)
+  content = h.read()
+  h.close()
+  return content
+
+def write_to_file(file, content):
+  h = open(file, 'w')
+  h.write(content)
+  h.close()
+
+# return html
+def getData(problemUrl):
   html = getpage(problemUrl);
   ref = re.findall(r'(/tc\?module=ProblemDetail[^"]*)"', html);
   assert len(ref) > 0
@@ -54,11 +67,23 @@ def getDataUrl(problemUrl):
   html = getpage(statusUrl);
   ref = re.findall(r'<a href="([^"]*)" class="statText">view</a>', html);
   assert len(ref) > 0
-  return 'http://community.topcoder.com' + ref[-1].replace('&amp;', '&');
+  dataUrl = 'http://community.topcoder.com' + ref[-1].replace('&amp;', '&');
+  firstIn = True;
+  while True:
+    html = getpage(dataUrl);
+    if re.search('<!-- System Testing -->', html): return html
+    if firstIn: firstIn = False; 
+    else: print 'Is username or password wrong?';
+    login();
 
 def output(data, layout):
+  # mangle
+  mangle_prefix = ['#' + i + ''.join(random.sample(string.lowercase, 13)) + '#' for i in string.uppercase]
+  for c in string.uppercase:
+    layout = layout.replace(c, mangle_prefix[ord(c) - ord('A')])
+
   def getLabel(i, j):
-    return string.uppercase[i] + '.' * j
+    return mangle_prefix[i] + '.' * j
   
   def checkTypeStr(s):
     if len(s) == 0: return False;
@@ -79,16 +104,8 @@ def output(data, layout):
       layout = layout.replace(getLabel(i, 0), str(s));
   return layout
 
-def generateData(url):
-  firstIn = True;
-  while True:
-    html = getpage(url);
-    text = re.findall(r'<!-- System Testing -->([^!]*)!', html);
-    if len(text) > 0: break;
-    if firstIn: firstIn = False; 
-    else: print 'Is username or password wrong?';
-    login();
-  data = re.findall(r'<TD (?:BACKGROUND="/i/steel_blue_bg.gif" )?CLASS="statText"[^>]*>([^<]*)</TD>', text[0])
+def generateData(html):
+  data = re.findall(r'<TD (?:BACKGROUND="/i/steel_blue_bg.gif" )?CLASS="statText" ALIGN="(?:left|right)">([^<]*)</TD>', html)
   assert len(data) % 3 == 0
 
   def pretty(s):
@@ -97,34 +114,33 @@ def generateData(url):
     return json.loads(s);
   dataIn = map(pretty, data[::3]);
   dataOut = map(pretty, data[1::3]);
+    
+  number_of_data = len(dataIn)
+
+  layoutIn = read_from_file('layout.in')
+  layoutOut = read_from_file('layout.out')
   
-  count = len(dataIn);
-  print "*** Remember to configure the layout files. ***"
   name = raw_input('file name:');
   group = input('group size:');
-  
-  handle = open('layout.in');
-  layoutIn = handle.read();
-  handle.close();
-
-  handle = open('layout.out');
-  layoutOut = handle.read();
-  handle.close();
 
   if os.path.exists(name) == False: os.mkdir(name);
-  for i in xrange(0, count, group):
-    writerIn = open('%s/%d.in' % (name, i / group + 1), 'w');
-    writerOut = open('%s/%d.out' % (name, i / group + 1), 'w');
+  for i in xrange(0, number_of_data, group):
+    filenameIn = '%s/%d.in' % (name, i / group + 1)
+    filenameOut = '%s/%d.out' % (name, i / group + 1)
+    contentIn, contentOut = "", ""
     
-    if group > 1: writerIn.write(str(min(count - i, group)) + '\n');
+    if group > 1: contentIn += str(min(number_of_data - i, group)) + '\n'
 
-    for j in xrange(i, min(count, i + group)) :
-      writerIn.write(output(dataIn[j], layoutIn));
-      writerOut.write(output(dataOut[j], layoutOut));
-    writerIn.close();
-    writerOut.close();
+    for j in xrange(i, min(number_of_data, i + group)) :
+      contentIn += output(dataIn[j], layoutIn)
+      contentOut += output(dataOut[j], layoutOut)
+    write_to_file(filenameIn, contentIn)
+    write_to_file(filenameOut, contentOut)
 
-problemUrl = raw_input('problem url:');
-dataUrl = getDataUrl(problemUrl);
-generateData(dataUrl);
+if __name__ == "__main__":
+  problemUrl = raw_input('problem url:');
+  dataHtml = getData(problemUrl);
+  write_to_file('data.html', dataHtml)
+  dataHtml = read_from_file('data.html')
+  generateData(dataHtml);
 
