@@ -85,27 +85,38 @@ def guess_layout(data):
   def every(tester, x): return all_are(map(tester, x), True)
   def is_string_array(s): return all_are(map(is_str, s), True)
   def same_string_length(a): return the_same(map(len, a))
-  def is_square(a): return len(a) and len(a) == len(a[0])
 
   header, body = [], []
   for i, s in enumerate(data[0]):
     collection = map(lambda x: x[i], data)
 
     if is_num(s):
-      header.append(i2c(i))
+      header.append((i2c(i), collection))
     elif is_str(s):
       if all_are(map(bool, collection), True):
         body.append(i2c(i))
       else:
         body.append('"%c"' % i2c(i))
     elif every(is_string_array, collection):
-      header.append(i2c(i) + '.')
-      if every(same_string_length, collection) and not every(is_square, collection): 
-        header.append(i2c(i) + '..')
+      header.append((i2c(i) + '.', map(len, collection)))
+      if every(same_string_length, collection): 
+        header.append((i2c(i) + '..', map(lambda x: len(x[0]) if len(x) else -1, collection)))
       body.append(i2c(i))
     else: # should be int[] / float[] 
-      header.append(i2c(i) + '.')
+      header.append((i2c(i) + '.', map(len, collection)))
       body.append(i2c(i))
+
+  def remove_same(a):
+    i = 0
+    while i < len(a):
+      j = i + 1
+      while j < len(a):
+        if a[i][1] == a[j][1]: del a[j]
+        else: j += 1
+      i += 1
+    return a
+
+  header = map(lambda x: x[0], remove_same(header))
   layout = '\n'.join([' '.join(header), '\n'.join(body)]).strip()
   print '-------- probable layout --------'
   print layout
