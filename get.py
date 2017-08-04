@@ -116,6 +116,7 @@ def guess_layout(data):
       i += 1
     return a
 
+  header = map(lambda x: (x[0], hash(str(x[1]))), header)
   header = map(lambda x: x[0], remove_same(header))
   layout = '\n'.join([' '.join(header), '\n'.join(body)]).strip()
   print '-------- probable layout --------'
