@@ -1,0 +1,38 @@
+{
+    "begin": "Sun Aug 20 09:35:03 2017",
+    "end": "Sun Aug 20 09:35:48 2017",
+    "problem": [
+        [
+            "2017 TCO Algorithm > Round 3A",
+            "CoprimeMatrix"
+        ],
+        [
+            "2017 TCO Algorithm > Round 3A",
+            "MaidensBunraku"
+        ],
+        [
+            "2017 TCO Algorithm > Round 3A",
+            "HiddenRabbits"
+        ]
+    ],
+    "solution": [
+        [
+            "2017 TCO Algorithm > Round 3A",
+            "CoprimeMatrix",
+            "2017 TCO Algorithm Round 3A - Division I, Level One",
+            "solution"
+        ],
+        [
+            "2017 TCO Algorithm > Round 3A",
+            "MaidensBunraku",
+            "2017 TCO Algorithm Round 3A - Division I, Level Two",
+            "solution"
+        ],
+        [
+            "2017 TCO Algorithm > Round 3A",
+            "HiddenRabbits",
+            "2017 TCO Algorithm Round 3A - Division I, Level Three",
+            "solution"
+        ]
+    ]
+}

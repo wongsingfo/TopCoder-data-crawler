@@ -6,13 +6,14 @@ import getpass
 import HTMLParser
 import json
 import os
+import Queue
 import random
 import re
 import string
+import thread
+import time
 import urllib  
 import urllib2  
-import thread
-import Queue
 
 filename = 'cookie'
 cookie = cookielib.MozillaCookieJar(filename)
@@ -37,14 +38,14 @@ def login():
 
 def getpage(url, postData = None):
   url = htmlParser.unescape(url)
-  print 'request: ', url 
+  print 'request:\t', url 
   url = 'https://community.topcoder.com' + url
   while True:
     try:
       request = opener.open(url, postData, 10)
       ret = request.read()
     except:
-      print 'request timeout (10s), send another one'
+      print 'request:\t', url, '(retry)'
       continue
     return ret;
 
@@ -70,10 +71,11 @@ def crawl_contest(page):
       for page in next_pages:
         crawl(getpage(page[0]), page[1], builder[1:])
 
-
   chatser = string.digits + string.letters + ' '
+  def validate_name(name):
+    return filter(lambda x: x in chatser, name).replace(' ', '_')
   def validate_filename(name, postfix):
-    return filter(lambda x: x in chatser, name).replace(' ', '_') + '.' + postfix
+    return folder + '/' + validate_name(name) + '.' + postfix
 
   def strip_html(html):
     ret = re.search(r'<!-- BEGIN BODY -->([\S\s]*?)<!-- END BODY -->', html)
@@ -83,6 +85,7 @@ def crawl_contest(page):
     return re.findall(r'<A HREF="(/stat\?c=problem_statement&pm=\d+&rd=\d+)" class="statText">(.*?)</A>', html)
 
   def builder_problem(html, prefix):
+    overview_json['problem'].append(prefix)
     write_to_file(validate_filename('Problem Statement ' + prefix[-1], 'html'), strip_html(html))
     return re.findall(r'<a href="(/tc\?module=ProblemDetail&rd=\d+&pm=\d+)">(.*?)</a>', html)
 
@@ -91,10 +94,29 @@ def crawl_contest(page):
     return [(sols[-1], 'solution')] if len(sols) else []
 
   def builder_solution(html, prefix):
+    overview_json['solution'].append(prefix)
     write_to_file(validate_filename(prefix[-2] + ' ' + prefix[-3], 'html'), strip_html(html))
     return []
 
+  folder = validate_name(page[1])
+  print 'begin:\t', folder
+  if os.path.exists(folder):
+    if os.path.exists(folder + '/overview.json'): 
+      print 'end:\t', folder, '(already exists)'
+      return
+  else:
+    os.mkdir(folder)
+
+  overview_json = {}
+  overview_json['begin'] = str(time.ctime(time.time()))
+  overview_json['problem'] = []
+  overview_json['solution'] = []
   crawl(getpage(page[0]), [page[1]], [builder_overview, builder_problem, builder_detail, builder_solution])
+
+  overview_json['end'] = str(time.ctime(time.time()))
+  write_to_file(validate_filename('overview', 'json'), 
+    json.dumps(overview_json, sort_keys=True, indent=4, separators=(',', ': ')))
+  print 'end:\t', folder
 
 if __name__ == '__main__':
   page_overview = getpage('/stat?c=round_overview');
