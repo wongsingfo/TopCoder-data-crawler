@@ -10,10 +10,11 @@ import Queue
 import random
 import re
 import string
-import thread
+import sys
+import threading
 import time
 import urllib  
-import urllib2  
+import urllib2
 
 filename = 'cookie'
 cookie = cookielib.MozillaCookieJar(filename)
@@ -22,7 +23,13 @@ if os.path.exists(filename):
 opener = urllib2.build_opener(urllib2.HTTPCookieProcessor(cookie))
 htmlParser = HTMLParser.HTMLParser()
 
-loginLock = thread.allocate_lock()
+loginLock = threading.Lock()
+infoLock = threading.Lock()
+
+def info(type, *msg):
+  infoLock.acquire()
+  print '#' + type + ':\t' + ' '.join(map(str, msg))
+  infoLock.release()
 
 def login():
   if loginLock.locked():
@@ -31,8 +38,10 @@ def login():
   else :
     loginLock.acquire()
     print 'In order to continue, you must provide your user name and password.'
+    infoLock.acquire()
     username = raw_input('username:');
     password = getpass.getpass('password:');
+    infoLock.release()
 
     postdata = urllib.urlencode({
                'nextpage': 'http://community.topcoder.com/tc',
@@ -46,7 +55,7 @@ def login():
 
 def getpage(adr, postData = None):
   adr = htmlParser.unescape(adr)
-  print 'request:\t', adr 
+  info('request', adr)
   url = 'https://community.topcoder.com' + adr
   while True:
     try:
@@ -54,10 +63,11 @@ def getpage(adr, postData = None):
       ret = request.read()
       if re.search('<div class="errorText">In order to continue, you must provide your user name and password.</div>', ret):
         login()
-        print 'request:\t', adr, '(retry after login)'
+        info('request', adr, '(retry after login)')
         continue
     except:
-      print 'request:\t', adr, '(retry)'
+      info('error', sys.exc_info()[0])
+      info('request', adr, '(retry)')
       continue
     return ret;
 
@@ -111,10 +121,10 @@ def crawl_contest(page):
     return []
 
   folder = validate_name(page[1])
-  print 'begin:\t', folder
+  info('begin', folder)
   if os.path.exists(folder):
     if os.path.exists(folder + '/overview.json'): 
-      print 'end:\t', folder, '(already exists)'
+      info('end', folder, '(already exists)')
       return
   else:
     os.mkdir(folder)
@@ -128,9 +138,30 @@ def crawl_contest(page):
   overview_json['end'] = str(time.ctime(time.time()))
   write_to_file(validate_filename('overview', 'json'), 
     json.dumps(overview_json, sort_keys=True, indent=4, separators=(',', ': ')))
-  print 'end:\t', folder
+  info('end', folder)
+
+queueLock = threading.Lock()
+workQueue = Queue.Queue()
+
+class Worker(threading.Thread):
+  def run(self):
+    while True:
+      queueLock.acquire()
+      if workQueue.empty():
+        queueLock.release()
+        return
+      else:
+        contestPage = workQueue.get()
+        queueLock.release()
+        crawl_contest(contestPage)
+        workQueue.task_done()
+
 
 if __name__ == '__main__':
   page_overview = getpage('/stat?c=round_overview');
   all_contests = re.findall(r'<OPTION value="(/stat\?c=round_overview&er=\d+&rd=\d+)">(.*?)</OPTION>', page_overview)
-  crawl_contest(all_contests[0])
+  for contest in all_contests: workQueue.put(contest)
+  workers = [Worker() for i in range(5)]
+  for worker in workers: worker.start()
+  workQueue.join()
+  print 'DONE :) '
