@@ -3,6 +3,7 @@ layout.in
 layout.out
 data
 *.html
+*.json
 
 
 # ignore pyinstaller

@@ -22,30 +22,42 @@ if os.path.exists(filename):
 opener = urllib2.build_opener(urllib2.HTTPCookieProcessor(cookie))
 htmlParser = HTMLParser.HTMLParser()
 
+loginLock = thread.allocate_lock()
+
 def login():
-  print 'login first'
-  username = raw_input('username:');
-  password = getpass.getpass('password:');
+  if loginLock.locked():
+    loginLock.acquire()
+    loginLock.release()
+  else :
+    loginLock.acquire()
+    print 'In order to continue, you must provide your user name and password.'
+    username = raw_input('username:');
+    password = getpass.getpass('password:');
 
-  postdata = urllib.urlencode({
-             'nextpage': 'http://community.topcoder.com/tc',
-             'module': 'Login',
-             'username': username,
-             'password': password
-             })
-  getpage('/tc', postdata)
-  cookie.save(ignore_discard=True, ignore_expires=True)
+    postdata = urllib.urlencode({
+               'nextpage': 'http://community.topcoder.com/tc',
+               'module': 'Login',
+               'username': username,
+               'password': password
+               })
+    getpage('/tc', postdata)
+    cookie.save(ignore_discard=True, ignore_expires=True)
+    loginLock.release()
 
-def getpage(url, postData = None):
-  url = htmlParser.unescape(url)
-  print 'request:\t', url 
-  url = 'https://community.topcoder.com' + url
+def getpage(adr, postData = None):
+  adr = htmlParser.unescape(adr)
+  print 'request:\t', adr 
+  url = 'https://community.topcoder.com' + adr
   while True:
     try:
       request = opener.open(url, postData, 10)
       ret = request.read()
+      if re.search('<div class="errorText">In order to continue, you must provide your user name and password.</div>', ret):
+        login()
+        print 'request:\t', adr, '(retry after login)'
+        continue
     except:
-      print 'request:\t', url, '(retry)'
+      print 'request:\t', adr, '(retry)'
       continue
     return ret;
 
